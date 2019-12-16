@@ -9,11 +9,14 @@ class VcfMap:
         self.from_nodes_to_to_nodes = from_nodes_to_to_nodes
         self.from_nodes_to_n_haplotypes = from_nodes_to_n_haplotypes
         self.haplotypes = haplotypes
+        self.n_haplotypes = n_haplotypes
         self.possible_haplotypes = set(range(0, n_haplotypes))
 
     def get_haplotypes_on_edge(self, from_node, to_node):
         index = self.from_nodes_to_haplotypes[from_node]
         n_haplotypes = self.from_nodes_to_n_haplotypes[from_node]
+        if n_haplotypes == 0:
+            return None
         haplotypes = self.haplotypes[index:index+n_haplotypes]
 
         if self.from_nodes_to_to_nodes[from_node] == to_node:
@@ -39,6 +42,20 @@ class VcfMap:
                    data["from_nodes_to_n_haplotypes"],
                    data["haplotypes"],
                    data["n_haplotypes"])
+
+    def allele_frequency(self, from_node, to_node):
+        haplotypes = self.get_haplotypes_on_edge(from_node, to_node)
+        if haplotypes is None:
+            # This means an edge is not a variant
+            return 1.0
+
+        return len(haplotypes / self.n_haplotypes)
+
+    def interval_allele_frequencies(self, interval):
+        # Returns list of allele frequencies for all edges in interval
+        rps = interval.region_paths
+        return [self.allele_frequency(from_node, to_node) \
+                for from_node, to_node in zip(rps[0:-1], rps[1:])]
 
 
 class VcfMapComplex:
