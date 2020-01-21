@@ -55,12 +55,19 @@ class MapCreator:
         self._haplotypes = array("I") # np.array([])
         self._n_haplotypes = 0
 
+        self._from_nodes_to_missing_haplotypes = np.zeros(len(graph.blocks), dtype=np.uint32)
+        self._from_nodes_to_n_missing_haplotypes = np.zeros(len(graph.blocks), dtype=np.uint16)
+        self._missing_haplotypes = array("I")
+
     def _make_vcfmap(self):
         self.vcfmap = VcfMap(self._from_nodes_to_haplotypes,
                                self._from_nodes_to_to_nodes,
                                self._from_nodes_to_n_haplotypes,
                                np.array(self._haplotypes, dtype=np.uint16),
-                               self._n_haplotypes)
+                               self._n_haplotypes,
+                             self._from_nodes_to_missing_haplotypes,
+                             self._from_nodes_to_n_missing_haplotypes,
+                             self._missing_haplotypes)
 
     def _store_processed_variant(self, line, edge):
         #print("adding edge %s" % (str(edge)))
@@ -68,14 +75,20 @@ class MapCreator:
         to_node = edge[1]
         self._from_nodes_to_to_nodes[from_node-self.graph_min_node] = to_node
         self._from_nodes_to_haplotypes[from_node-self.graph_min_node] = len(self._haplotypes)
+        self._from_nodes_to_missing_haplotypes[from_node-self.graph_min_node] = len(self._missing_haplotypes)
 
-        haplotypes_tmp = []
         n_haplotypes = 0
+        n_missing_haplotypes = 0
+
         for i, genotype in enumerate(line[9:]):
             haplotype0_id = i*2
             haplotype1_id = i*2 + 1
 
-            if genotype == "0|1":
+            if genotype == "./.":
+                self._missing_haplotypes.append(haplotype0_id)
+                self._missing_haplotypes.append(haplotype1_id)
+                n_missing_haplotypes += 2
+            elif genotype == "0|1":
                 self._haplotypes.append(haplotype1_id)
                 n_haplotypes += 1
             elif genotype == "1|0":
@@ -94,6 +107,7 @@ class MapCreator:
         #self._haplotypes = np.concatenate((self._haplotypes, haplotypes_tmp))
 
         self._from_nodes_to_n_haplotypes[from_node-self.graph_min_node] = n_haplotypes
+        self._from_nodes_to_n_missing_haplotypes[from_node-self.graph_min_node] = n_missing_haplotypes
 
     def create(self):
 

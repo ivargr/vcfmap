@@ -4,13 +4,19 @@ import numpy as np
 
 class VcfMap:
     # More simple VcfMap that assumes no overlapping variants, and never more than two edges out for any node
-    def __init__(self, from_nodes_to_haplotypes, from_nodes_to_to_nodes, from_nodes_to_n_haplotypes, haplotypes, n_haplotypes, graph_min_node=0):
+    def __init__(self, from_nodes_to_haplotypes, from_nodes_to_to_nodes, from_nodes_to_n_haplotypes, haplotypes, n_haplotypes,
+                 from_nodes_to_missing_haplotypes, from_nodes_to_n_missing_haplotypes, missing_haplotypes, graph_min_node=0):
         self.graph_min_node = 0
         self.from_nodes_to_haplotypes = from_nodes_to_haplotypes
         self.from_nodes_to_to_nodes = from_nodes_to_to_nodes
         self.from_nodes_to_n_haplotypes = from_nodes_to_n_haplotypes
         self.haplotypes = haplotypes
         self.n_haplotypes = n_haplotypes
+        self.from_nodes_to_missing_haplotypes = from_nodes_to_missing_haplotypes
+        self.from_nodes_to_n_missing_haplotypes = from_nodes_to_n_missing_haplotypes
+        self.missing_haplotypes = missing_haplotypes
+        self.missing_haplotypes_set = set(missing_haplotypes)
+
         self.possible_haplotypes = set(range(0, n_haplotypes))
 
     def get_haplotypes_on_edge(self, from_node, to_node):
@@ -25,10 +31,10 @@ class VcfMap:
 
         if self.from_nodes_to_to_nodes[from_node] == to_node + self.graph_min_node:
             # We have a match in the index
-            return set(haplotypes)
+            return set(haplotypes) - self.missing_haplotypes_set
         else:
             # No match
-            return self.possible_haplotypes - set(haplotypes)
+            return self.possible_haplotypes - set(haplotypes) - self.missing_haplotypes_set
 
     def to_file(self, file_name):
         np.savez(file_name,
@@ -36,7 +42,10 @@ class VcfMap:
                  from_nodes_to_to_nodes=self.from_nodes_to_to_nodes,
                  from_nodes_to_n_haplotypes=self.from_nodes_to_n_haplotypes,
                  haplotypes=self.haplotypes,
-                 n_haplotypes=len(self.possible_haplotypes))
+                 n_haplotypes=len(self.possible_haplotypes),
+                 from_nodes_to_missing_haplotypes=self.from_nodes_to_missing_haplotypes,
+                 from_nodes_to_n_missing_haplotypes=self.from_nodes_to_n_missing_haplotypes,
+                 missing_haplotypes=self.missing_haplotypes)
 
     @classmethod
     def from_file(cls, file_name):
@@ -45,7 +54,10 @@ class VcfMap:
                    data["from_nodes_to_to_nodes"],
                    data["from_nodes_to_n_haplotypes"],
                    data["haplotypes"],
-                   data["n_haplotypes"])
+                   data["n_haplotypes"],
+                   data["from_nodes_to_missing_haplotypes"],
+                   data["from_nodes_to_n_missing_haplotypes"],
+                   data["missing_haplotypes"])
 
     def allele_frequency(self, from_node, to_node):
         haplotypes = self.get_haplotypes_on_edge(from_node, to_node)
