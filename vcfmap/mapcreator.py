@@ -42,6 +42,7 @@ class MapCreator:
         self.n_deletions = 0
         self.n_insertions = 0
         self.n_substitutions = 0
+        self.graph_min_node = graph.min_node
 
         self.sample_names = get_vcf_sample_names(self.vcf_file_name)
         logging.info("There are %d samples in vcf file" % len(self.sample_names))
@@ -65,8 +66,8 @@ class MapCreator:
         #print("adding edge %s" % (str(edge)))
         from_node = edge[0]
         to_node = edge[1]
-        self._from_nodes_to_to_nodes[from_node] = to_node
-        self._from_nodes_to_haplotypes[from_node] = len(self._haplotypes)
+        self._from_nodes_to_to_nodes[from_node-self.graph_min_node] = to_node
+        self._from_nodes_to_haplotypes[from_node-self.graph_min_node] = len(self._haplotypes)
 
         haplotypes_tmp = []
         n_haplotypes = 0
@@ -92,7 +93,7 @@ class MapCreator:
 
         #self._haplotypes = np.concatenate((self._haplotypes, haplotypes_tmp))
 
-        self._from_nodes_to_n_haplotypes[from_node] = n_haplotypes
+        self._from_nodes_to_n_haplotypes[from_node-self.graph_min_node] = n_haplotypes
 
     def create(self):
 

@@ -4,7 +4,8 @@ import numpy as np
 
 class VcfMap:
     # More simple VcfMap that assumes no overlapping variants, and never more than two edges out for any node
-    def __init__(self, from_nodes_to_haplotypes, from_nodes_to_to_nodes, from_nodes_to_n_haplotypes, haplotypes, n_haplotypes):
+    def __init__(self, from_nodes_to_haplotypes, from_nodes_to_to_nodes, from_nodes_to_n_haplotypes, haplotypes, n_haplotypes, graph_min_node=0):
+        self.graph_min_node = 0
         self.from_nodes_to_haplotypes = from_nodes_to_haplotypes
         self.from_nodes_to_to_nodes = from_nodes_to_to_nodes
         self.from_nodes_to_n_haplotypes = from_nodes_to_n_haplotypes
@@ -13,13 +14,16 @@ class VcfMap:
         self.possible_haplotypes = set(range(0, n_haplotypes))
 
     def get_haplotypes_on_edge(self, from_node, to_node):
+        from_node = from_node - self.graph_min_node
+        to_node = to_node - self.graph_min_node
+
         index = self.from_nodes_to_haplotypes[from_node]
         n_haplotypes = self.from_nodes_to_n_haplotypes[from_node]
         if n_haplotypes == 0:
             return None
         haplotypes = self.haplotypes[index:index+n_haplotypes]
 
-        if self.from_nodes_to_to_nodes[from_node] == to_node:
+        if self.from_nodes_to_to_nodes[from_node] == to_node + self.graph_min_node:
             # We have a match in the index
             return set(haplotypes)
         else:
@@ -49,13 +53,34 @@ class VcfMap:
             # This means an edge is not a variant
             return 1.0
 
-        return len(haplotypes / self.n_haplotypes)
+        return len(haplotypes) / self.n_haplotypes
 
     def interval_allele_frequencies(self, interval):
         # Returns list of allele frequencies for all edges in interval
         rps = interval.region_paths
         return [self.allele_frequency(from_node, to_node) \
                 for from_node, to_node in zip(rps[0:-1], rps[1:])]
+
+    def haplotypes_consistent_with_whole_interval(self, interval):
+        haplotypes_on_edges = []
+        rps = interval.region_paths
+        for from_node, to_node in zip(rps[0:-1], rps[1:]):
+            haplotypes = self.get_haplotypes_on_edge(from_node, to_node)
+            if haplotypes is None:
+                continue
+            #assert len(haplotypes) > 0, "Edge %d-%d has no haplotypes" % (from_node, to_node)
+            haplotypes_on_edges.append(haplotypes)
+
+        if len(haplotypes_on_edges) == 0:
+            # No edges, means interval has all haplotypes
+            return self.possible_haplotypes
+
+        common = haplotypes_on_edges[0]
+        for h in haplotypes_on_edges[1:]:
+            common = common.intersection(h)
+
+        return common
+
 
 
 class VcfMapComplex:
