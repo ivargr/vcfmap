@@ -29,12 +29,16 @@ class VcfMap:
             return None
         haplotypes = self.haplotypes[index:index+n_haplotypes]
 
+        missing_index = self.from_nodes_to_n_missing_haplotypes[from_node]
+        n_missing = self.from_nodes_to_n_missing_haplotypes[from_node]
+        missing = set(self.missing_haplotypes[missing_index:missing_index+n_missing])
+
         if self.from_nodes_to_to_nodes[from_node] == to_node + self.graph_min_node:
             # We have a match in the index
-            return set(haplotypes) - self.missing_haplotypes_set
+            return set(haplotypes) - missing
         else:
             # No match
-            return self.possible_haplotypes - set(haplotypes) - self.missing_haplotypes_set
+            return self.possible_haplotypes - set(haplotypes) - missing
 
     def to_file(self, file_name):
         np.savez(file_name,
@@ -59,13 +63,18 @@ class VcfMap:
                    data["from_nodes_to_n_missing_haplotypes"],
                    data["missing_haplotypes"])
 
+    def get_n_haplotypes_on_node(self, node):
+        # Returns all haplotypes that passes that node
+        node = node - self.graph_min_node
+        n_missing = self.from_nodes_to_n_missing_haplotypes[node]
+        return self.n_haplotypes - n_missing
+
     def allele_frequency(self, from_node, to_node):
         haplotypes = self.get_haplotypes_on_edge(from_node, to_node)
         if haplotypes is None:
             # This means an edge is not a variant
             return 1.0
-
-        return len(haplotypes) / self.n_haplotypes
+        return len(haplotypes) / self.get_n_haplotypes_on_node(from_node)
 
     def interval_allele_frequencies(self, interval):
         # Returns list of allele frequencies for all edges in interval

@@ -10,10 +10,12 @@ from array import array
 
 def get_variant_type(vcf_line):
 
-    if "VT=SNP" in vcf_line:
+    l = vcf_line.split()
+    if len(l[3]) == len(l[4]):
+        return "SNP"
+    elif "VT=SNP" in vcf_line:
         return "SNP"
     elif "VT=INDEL" in vcf_line:
-        l = vcf_line.split()
         if len(l[3]) > len(l[4]):
             return "DELETION"
         else:
@@ -81,6 +83,7 @@ class MapCreator:
         n_missing_haplotypes = 0
 
         for i, genotype in enumerate(line[9:]):
+            genotype = genotype[0:3]
             haplotype0_id = i*2
             haplotype1_id = i*2 + 1
 
@@ -101,8 +104,15 @@ class MapCreator:
             elif genotype == "0|0":
                 continue
             else:
-                logging.error("Line %s" % line)
-                raise Exception("Variant not phased")
+                # Unphased. This is okay if homozygous
+                if genotype == "1/1":
+                    self._haplotypes.append(haplotype0_id)
+                    self._haplotypes.append(haplotype1_id)
+                elif genotype == "0/0":
+                    continue
+                else:
+                    logging.error("Line %s" % line)
+                    raise Exception("Variant not phased: %s" % genotype)
 
         #self._haplotypes = np.concatenate((self._haplotypes, haplotypes_tmp))
 
